@@ -227,7 +227,33 @@ _Note: Replace `/absolute/path/to/target/project` with the directory you want to
 
 ---
 
-## 🧭 **8. Bibliographic Foundations**
+## 🎨 **8. Excalidraw Visualization**
+
+Hexanorm bridges the gap between code and diagrams by allowing you to **export your architecture directly to Excalidraw**.
+
+### **Features**
+
+- **Auto-Layout**: Automatically arranges your Domain, Application, and Infrastructure layers.
+- **Live Sync**: Changes in code are reflected in the diagram (via re-export).
+- **Semantic Coloring**:
+  - 🟦 **Domain**: Blue (Core Logic)
+  - 🟩 **Application**: Green (Use Cases)
+  - 🟨 **Infrastructure**: Yellow (Adapters)
+  - 🟥 **Violations**: Red (Illegal Dependencies)
+
+### **Usage**
+
+To generate a diagram:
+
+```bash
+hexanorm export --format=excalidraw --out=architecture.excalidraw
+```
+
+You can then open `architecture.excalidraw` in [excalidraw.com](https://excalidraw.com) or the VS Code Excalidraw extension to visually inspect your system's "Golden Thread".
+
+---
+
+## 🧭 **9. Bibliographic Foundations**
 
 Hexanorm’s conceptual design aligns with:
 
