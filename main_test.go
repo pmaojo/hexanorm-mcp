@@ -6,17 +6,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/analysis"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/domain"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/graph"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/analysis"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/domain"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/graph"
 )
 
-// TestVibecoder runs an integration test for the Hexanorm system.
+// TestHexanorm runs an integration test for the Hexanorm system.
 // It verifies that:
 // 1. Files are scanned and analyzed.
 // 2. Architectural violations (e.g., Domain importing Infrastructure) are detected.
 // 3. BDD traceability links (Scenario -> StepDefinition) are established.
-func TestVibecoder(t *testing.T) {
+func TestHexanorm(t *testing.T) {
 	g := graph.NewGraph(nil) // Use in-memory for tests
 	an := analysis.NewAnalyzer(g)
 

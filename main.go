@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/mcp"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/mcp"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

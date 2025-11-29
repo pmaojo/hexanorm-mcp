@@ -1,4 +1,4 @@
-module github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder
+module github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm
 
 go 1.23.1
 
