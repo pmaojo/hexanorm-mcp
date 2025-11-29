@@ -37,32 +37,57 @@ It uses `fsnotify` to incrementally update the analysis graph as files are creat
 
 - Go 1.23 or later
 
-## Usage
+### Installation
 
-### Running the Server
+1.  **Clone the repository:**
 
-You can run the server directly using Go:
+    ```bash
+    git clone https://github.com/modelcontextprotocol/go-sdk.git
+    cd examples/server/hexanorm
+    ```
 
-```bash
-go run . /path/to/your/project
+2.  **Build the server:**
+    ```bash
+    go build -o hexanorm-server
+    ```
+
+### Configuration (Optional)
+
+You can configure the analysis by creating a `hexanorm.json` file in your project root:
+
+```json
+{
+  "excluded_dirs": ["node_modules", "dist", ".git"],
+  "included_layers": ["domain", "application", "infrastructure", "interface"],
+  "persistence_dir": ".hexanorm"
+}
 ```
 
-The server runs over stdio, making it compatible with MCP clients like Claude Desktop.
+## Usage
 
 ### Integration with Claude Desktop
 
 To use Hexanorm with Claude Desktop, add the following to your `claude_desktop_config.json`:
 
+**Config File Location:**
+
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+**Configuration:**
+
 ```json
 {
   "mcpServers": {
     "hexanorm": {
-      "command": "go",
-      "args": ["run", ".", "/absolute/path/to/target/project"]
+      "command": "/absolute/path/to/hexanorm-server",
+      "args": ["/absolute/path/to/target/project"]
     }
   }
 }
 ```
+
+_Note: You can also use `go run .` as the command if you prefer not to build the binary._
 
 Replace `/absolute/path/to/target/project` with the directory you want to analyze.
 
