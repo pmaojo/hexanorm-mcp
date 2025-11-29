@@ -4,13 +4,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/domain"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/graph"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/store"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/domain"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/graph"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/store"
 )
 
 func TestPersistence(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "vibecoder_test")
+	tmpDir, err := os.MkdirTemp("", "hexanorm_test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestPersistence(t *testing.T) {
 }
 
 func TestRemoveNode(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "vibecoder_test_remove")
+	tmpDir, err := os.MkdirTemp("", "hexanorm_test_remove")
 	if err != nil {
 		t.Fatal(err)
 	}

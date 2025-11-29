@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/analysis"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/config"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/graph"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/analysis"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/config"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/graph"
 )
 
 // Watcher monitors the filesystem for changes and triggers incremental analysis.
@@ -129,8 +129,8 @@ func (w *Watcher) shouldIgnore(path string) bool {
 			return true
 		}
 	}
-	// Always ignore .git, .vibecoder
-	if base == ".git" || base == ".vibecoder" || strings.Contains(path, "/.vibecoder/") {
+	// Always ignore .git, .hexanorm
+	if base == ".git" || base == ".hexanorm" || strings.Contains(path, "/.hexanorm/") {
 		return true
 	}
 	return false

@@ -71,7 +71,7 @@ def main():
         print("Resources list:", json.dumps(resp, indent=2))
 
         # Read Status Resource
-        read_params = {"uri": "mcp://vibecoder/status"}
+        read_params = {"uri": "mcp://hexanorm/status"}
         resp = rpc_request(process, "resources/read", read_params, 4)
         print("Status resource:", json.dumps(resp, indent=2))
 

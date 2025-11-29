@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/domain"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/domain"
 )
 
 // Store handles persistence of the semantic graph using SQLite.
@@ -24,7 +24,7 @@ func NewStore(storageDir string) (*Store, error) {
 		return nil, fmt.Errorf("failed to create storage dir: %w", err)
 	}
 
-	dbPath := filepath.Join(storageDir, "vibecoder.db")
+	dbPath := filepath.Join(storageDir, "hexanorm.db")
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open db: %w", err)

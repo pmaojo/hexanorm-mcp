@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	curex "github.com/cucumber/cucumber-expressions-go"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/domain"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/graph"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/parser"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/domain"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/graph"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/parser"
 )
 
 // Analyzer performs static analysis on files to populate the semantic graph.

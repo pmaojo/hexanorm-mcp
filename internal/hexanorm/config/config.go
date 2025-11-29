@@ -18,15 +18,15 @@ type Config struct {
 var DefaultConfig = Config{
 	ExcludedDirs:   []string{"node_modules", "dist", "build", ".git", "vendor"},
 	IncludedLayers: []string{"domain", "application", "infrastructure", "interface"},
-	PersistenceDir: ".vibecoder",
+	PersistenceDir: ".hexanorm",
 }
 
-// LoadConfig reads and parses the `vibecoder.json` configuration file from the specified root directory.
+// LoadConfig reads and parses the `hexanorm.json` configuration file from the specified root directory.
 // If the file does not exist or cannot be parsed, it returns an error.
-// It expects the config file to be named `vibecoder.json` (legacy name).
+// It expects the config file to be named `hexanorm.json`.
 // If the configuration file is found but some fields are missing, it applies default values.
 func LoadConfig(rootDir string) (*Config, error) {
-	path := filepath.Join(rootDir, "vibecoder.json")
+	path := filepath.Join(rootDir, "hexanorm.json")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err

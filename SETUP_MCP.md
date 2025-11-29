@@ -3,7 +3,7 @@
 I have successfully built and verified the Hexanorm MCP server.
 
 > [!IMPORTANT]
-> I had to fix a bug in `internal/vibecoder/mcp/server.go` where the `jsonschema` struct tags were causing the server to crash on startup. The server is now healthy.
+> I had to fix a bug in `internal/hexanorm/mcp/server.go` where the `jsonschema` struct tags were causing the server to crash on startup. The server is now healthy.
 
 ## Installation
 

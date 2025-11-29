@@ -8,19 +8,19 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/analysis"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/config"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/domain"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/graph"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/store"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/watcher"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/analysis"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/config"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/domain"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/graph"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/store"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/watcher"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// VibecoderServer implements the MCP server interface for the Hexanorm system.
+// HexanormServer implements the MCP server interface for the Hexanorm system.
 // It acts as the central hub, coordinating the Graph, Analyzer, and Watcher components,
 // and exposing them via MCP tools and resources.
-type VibecoderServer struct {
+type HexanormServer struct {
 	Graph    *graph.Graph       // The semantic graph.
 	Analyzer *analysis.Analyzer // The static analyzer.
 	Store    *store.Store       // The persistent store.
@@ -59,7 +59,7 @@ func NewServer(rootDir string) (*mcp.Server, error) {
 		w.Start()
 	}
 
-	vs := &VibecoderServer{
+	hs := &HexanormServer{
 		Graph:    g,
 		Analyzer: an,
 		Store:    st,
@@ -77,43 +77,43 @@ func NewServer(rootDir string) (*mcp.Server, error) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "scaffold_feature",
 		Description: "Creates structure for a new feature",
-	}, vs.scaffoldFeature)
+	}, hs.scaffoldFeature)
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "link_requirement",
 		Description: "Links a file to a requirement",
-	}, vs.linkRequirement)
+	}, hs.linkRequirement)
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "blast_radius",
 		Description: "Analyze impact of changing a code node",
-	}, vs.blastRadius)
+	}, hs.blastRadius)
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "index_step_definitions",
 		Description: "Re-index BDD step definitions",
-	}, vs.indexStepDefinitions)
+	}, hs.indexStepDefinitions)
 
 	// Register Resources
 	s.AddResource(&mcp.Resource{
 		Name: "status",
-		URI:  "mcp://vibecoder/status",
-	}, vs.handleStatus)
+		URI:  "mcp://hexanorm/status",
+	}, hs.handleStatus)
 
 	s.AddResource(&mcp.Resource{
 		Name: "violations",
-		URI:  "mcp://vibecoder/violations",
-	}, vs.handleViolations)
+		URI:  "mcp://hexanorm/violations",
+	}, hs.handleViolations)
 
 	s.AddResource(&mcp.Resource{
 		Name: "live_docs",
-		URI:  "mcp://vibecoder/live_docs",
-	}, vs.handleLiveDocs)
+		URI:  "mcp://hexanorm/live_docs",
+	}, hs.handleLiveDocs)
 
 	s.AddResource(&mcp.Resource{
 		Name: "traceability_matrix",
-		URI:  "mcp://vibecoder/traceability_matrix",
-	}, vs.handleTraceability)
+		URI:  "mcp://hexanorm/traceability_matrix",
+	}, hs.handleTraceability)
 
 	return s, nil
 }
@@ -162,13 +162,13 @@ type EmptyInput struct{}
 
 // Tool Handlers
 
-func (vs *VibecoderServer) scaffoldFeature(ctx context.Context, req *mcp.CallToolRequest, input ScaffoldInput) (*mcp.CallToolResult, any, error) {
+func (hs *HexanormServer) scaffoldFeature(ctx context.Context, req *mcp.CallToolRequest, input ScaffoldInput) (*mcp.CallToolResult, any, error) {
 	if input.Name == "" {
 		return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: "Name required"}}}, nil, nil
 	}
 
 	// Create directories (simplified)
-	base := filepath.Join(vs.RootDir, "src")
+	base := filepath.Join(hs.RootDir, "src")
 	dirs := []string{
 		filepath.Join(base, "domain", strings.ToLower(input.Name)),
 		filepath.Join(base, "domain", strings.ToLower(input.Name), "ports"),
@@ -188,19 +188,19 @@ func (vs *VibecoderServer) scaffoldFeature(ctx context.Context, req *mcp.CallToo
 	}, nil, nil
 }
 
-func (vs *VibecoderServer) linkRequirement(ctx context.Context, req *mcp.CallToolRequest, input LinkRequirementInput) (*mcp.CallToolResult, any, error) {
+func (hs *HexanormServer) linkRequirement(ctx context.Context, req *mcp.CallToolRequest, input LinkRequirementInput) (*mcp.CallToolResult, any, error) {
 	// Create Requirement Node if not exists
-	reqNode, exists := vs.Graph.GetNode(input.ReqID)
+	reqNode, exists := hs.Graph.GetNode(input.ReqID)
 	if !exists {
 		reqNode = &domain.Node{
 			ID:         input.ReqID,
 			Kind:       domain.NodeKindRequirement,
 			Properties: map[string]interface{}{"title": "Manually Linked Requirement"},
 		}
-		vs.Graph.AddNode(reqNode)
+		hs.Graph.AddNode(reqNode)
 	}
 
-	vs.Graph.AddEdge(input.ReqID, input.FilePath, domain.EdgeTypeImplementedBy)
+	hs.Graph.AddEdge(input.ReqID, input.FilePath, domain.EdgeTypeImplementedBy)
 
 	msg := fmt.Sprintf("Linked %s to %s", input.ReqID, input.FilePath)
 	return &mcp.CallToolResult{
@@ -210,8 +210,8 @@ func (vs *VibecoderServer) linkRequirement(ctx context.Context, req *mcp.CallToo
 	}, nil, nil
 }
 
-func (vs *VibecoderServer) blastRadius(ctx context.Context, req *mcp.CallToolRequest, input BlastRadiusInput) (*mcp.CallToolResult, any, error) {
-	features, reqs := vs.Graph.BlastRadius(input.CodeID)
+func (hs *HexanormServer) blastRadius(ctx context.Context, req *mcp.CallToolRequest, input BlastRadiusInput) (*mcp.CallToolResult, any, error) {
+	features, reqs := hs.Graph.BlastRadius(input.CodeID)
 
 	res := map[string]interface{}{
 		"code_id":               input.CodeID,
@@ -228,9 +228,9 @@ func (vs *VibecoderServer) blastRadius(ctx context.Context, req *mcp.CallToolReq
 	}, nil, nil
 }
 
-func (vs *VibecoderServer) indexStepDefinitions(ctx context.Context, req *mcp.CallToolRequest, input EmptyInput) (*mcp.CallToolResult, any, error) {
+func (hs *HexanormServer) indexStepDefinitions(ctx context.Context, req *mcp.CallToolRequest, input EmptyInput) (*mcp.CallToolResult, any, error) {
 	// Re-scan? For now just re-index
-	vs.Analyzer.IndexStepDefinitions()
+	hs.Analyzer.IndexStepDefinitions()
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{Text: "Indexed step definitions"},
@@ -240,8 +240,8 @@ func (vs *VibecoderServer) indexStepDefinitions(ctx context.Context, req *mcp.Ca
 
 // Resource Handlers
 
-func (vs *VibecoderServer) handleStatus(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
-	nodes := vs.Graph.GetAllNodes()
+func (hs *HexanormServer) handleStatus(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+	nodes := hs.Graph.GetAllNodes()
 	status := map[string]interface{}{
 		"node_count": len(nodes),
 		"status":     "healthy",
@@ -254,8 +254,8 @@ func (vs *VibecoderServer) handleStatus(ctx context.Context, req *mcp.ReadResour
 	}, nil
 }
 
-func (vs *VibecoderServer) handleViolations(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
-	violations := vs.Analyzer.FindViolations()
+func (hs *HexanormServer) handleViolations(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+	violations := hs.Analyzer.FindViolations()
 	bytes, _ := json.MarshalIndent(violations, "", "  ")
 	return &mcp.ReadResourceResult{
 		Contents: []*mcp.ResourceContents{
@@ -264,8 +264,8 @@ func (vs *VibecoderServer) handleViolations(ctx context.Context, req *mcp.ReadRe
 	}, nil
 }
 
-func (vs *VibecoderServer) handleLiveDocs(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
-	nodes := vs.Graph.GetAllNodes()
+func (hs *HexanormServer) handleLiveDocs(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+	nodes := hs.Graph.GetAllNodes()
 	var sb strings.Builder
 	sb.WriteString("# Hexanorm Live Docs\n\n")
 	sb.WriteString("## Nodes\n")
@@ -279,19 +279,19 @@ func (vs *VibecoderServer) handleLiveDocs(ctx context.Context, req *mcp.ReadReso
 	}, nil
 }
 
-func (vs *VibecoderServer) handleTraceability(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+func (hs *HexanormServer) handleTraceability(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 	// Build Matrix
 	// For each Requirement, find Features, Code, Tests
 	matrix := []map[string]interface{}{}
 
-	nodes := vs.Graph.GetAllNodes()
+	nodes := hs.Graph.GetAllNodes()
 	for _, n := range nodes {
 		if n.Kind == domain.NodeKindRequirement {
 			entry := map[string]interface{}{
 				"requirement_id": n.ID,
 			}
 			// Find implemented by
-			edges := vs.Graph.GetEdgesFrom(n.ID)
+			edges := hs.Graph.GetEdgesFrom(n.ID)
 			var code []string
 			for _, e := range edges {
 				if e.Type == domain.EdgeTypeImplementedBy {
@@ -301,7 +301,7 @@ func (vs *VibecoderServer) handleTraceability(ctx context.Context, req *mcp.Read
 			entry["code"] = code
 
 			// Find verifiers (Tests) - Reverse edge VERIFIES
-			revEdges := vs.Graph.GetEdgesTo(n.ID)
+			revEdges := hs.Graph.GetEdgesTo(n.ID)
 			var verifiers []string
 			for _, e := range revEdges {
 				if e.Type == domain.EdgeTypeVerifies {
