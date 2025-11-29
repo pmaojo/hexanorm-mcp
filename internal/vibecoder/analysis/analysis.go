@@ -1,11 +1,13 @@
 package analysis
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	curex "github.com/cucumber/cucumber-expressions-go"
 	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/domain"
 	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/graph"
 	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/parser"
@@ -13,18 +15,44 @@ import (
 
 type Analyzer struct {
 	Graph *graph.Graph
+	// Cache TSConfig for resolution
+	tsConfigs map[string]TSConfig
+	goMods    map[string]GoMod
+}
+
+type TSConfig struct {
+	BaseUrl string              `json:"baseUrl"`
+	Paths   map[string][]string `json:"paths"`
+}
+
+type GoMod struct {
+	Module string
 }
 
 func NewAnalyzer(g *graph.Graph) *Analyzer {
-	return &Analyzer{Graph: g}
+	return &Analyzer{
+		Graph:     g,
+		tsConfigs: make(map[string]TSConfig),
+		goMods:    make(map[string]GoMod),
+	}
 }
 
 func (a *Analyzer) AnalyzeFile(path string, content []byte) error {
+	// Pre-scan for config files
+	if filepath.Base(path) == "tsconfig.json" {
+		a.parseTSConfig(path, content)
+		return nil
+	}
+	if filepath.Base(path) == "go.mod" {
+		a.parseGoMod(path, content)
+		return nil
+	}
+
 	// 1. Determine Layer/Type
 	layer := detectLayer(path)
 
 	// 2. Create/Update Node
-	nodeID := path // Use path as ID for simplicity
+	nodeID := path
 	var node *domain.Node
 
 	// Handle Gherkin
@@ -35,8 +63,6 @@ func (a *Analyzer) AnalyzeFile(path string, content []byte) error {
 	// Handle Code
 	lang := parser.DetectLanguage(path)
 	if lang == parser.LangUnknown {
-		// Just register generic file? Or skip.
-		// Let's register generic code if inside source
 		if layer != "" {
 			node = &domain.Node{
 				ID:   nodeID,
@@ -65,12 +91,7 @@ func (a *Analyzer) AnalyzeFile(path string, content []byte) error {
 	imports, err := parser.ParseImports(content, lang)
 	if err == nil {
 		for _, imp := range imports {
-			// Resolve import path to ID (simplified)
-			// Assuming import path is relative or absolute?
-			// For now, we store the raw import path.
-			// In a real system, we'd resolve this to the actual file ID.
-			// Let's assume a simplified resolver or just store edge to "potential" ID.
-			targetID := resolveImport(path, imp)
+			targetID := a.resolveImport(path, imp, lang)
 			a.Graph.AddEdge(nodeID, targetID, domain.EdgeTypeImports)
 		}
 	}
@@ -80,6 +101,7 @@ func (a *Analyzer) AnalyzeFile(path string, content []byte) error {
 		steps, err := parser.ParseStepDefinitions(content, lang)
 		if err == nil && len(steps) > 0 {
 			for _, s := range steps {
+				// Use hash or cleaner ID to avoid filesystem weirdness in ID
 				stepID := fmt.Sprintf("stepdef:%s:%s", s.FunctionName, s.Pattern)
 				stepNode := &domain.Node{
 					ID:   stepID,
@@ -106,7 +128,6 @@ func (a *Analyzer) analyzeGherkin(path string, content []byte) error {
 		return err
 	}
 
-	// Create GherkinFeature Node
 	featID := "gh:feat:" + strings.ReplaceAll(feat.Name, " ", "_")
 	featNode := &domain.Node{
 		ID:   featID,
@@ -118,7 +139,6 @@ func (a *Analyzer) analyzeGherkin(path string, content []byte) error {
 	}
 	a.Graph.AddNode(featNode)
 
-	// Create Scenarios
 	for _, sc := range feat.Scenarios {
 		scID := "gh:scen:" + strings.ReplaceAll(sc.Name, " ", "_")
 		scNode := &domain.Node{
@@ -133,8 +153,6 @@ func (a *Analyzer) analyzeGherkin(path string, content []byte) error {
 			},
 		}
 		a.Graph.AddNode(scNode)
-		// Link Feature -> Scenario (Conceptual containment, generic edge? or just naming convention)
-		// Or assume implicit relationship. SRS doesn't define edge between Feat/Scen.
 	}
 	return nil
 }
@@ -155,20 +173,149 @@ func detectLayer(path string) string {
 	return ""
 }
 
-// resolveImport attempts to map an import string to a file ID.
-// This is very heuristic for the example.
-func resolveImport(sourcePath, importStr string) string {
-	// Remove quotes
-	importStr = strings.Trim(importStr, "\"'")
+// Config Parsing Helpers
 
-	// If it starts with ., it's relative
-	if strings.HasPrefix(importStr, ".") {
-		dir := filepath.Dir(sourcePath)
-		return filepath.Join(dir, importStr) // Simplified
+func (a *Analyzer) parseTSConfig(path string, content []byte) {
+	// Simplified parsing for compilerOptions.paths and baseUrl
+	var raw struct {
+		CompilerOptions struct {
+			BaseUrl string              `json:"baseUrl"`
+			Paths   map[string][]string `json:"paths"`
+		} `json:"compilerOptions"`
 	}
-	// Else assume absolute or package alias?
-	// For TS: src/domain/...
-	// For this example, we'll return it as is, or prepend prefix if matches known patterns.
+	if err := json.Unmarshal(content, &raw); err == nil {
+		dir := filepath.Dir(path)
+		a.tsConfigs[dir] = TSConfig{
+			BaseUrl: raw.CompilerOptions.BaseUrl,
+			Paths:   raw.CompilerOptions.Paths,
+		}
+	}
+}
+
+func (a *Analyzer) parseGoMod(path string, content []byte) {
+	// Simple regex to find module name
+	re := regexp.MustCompile(`module\s+([^\s]+)`)
+	matches := re.FindSubmatch(content)
+	if len(matches) > 1 {
+		dir := filepath.Dir(path)
+		a.goMods[dir] = GoMod{Module: string(matches[1])}
+	}
+}
+
+// Import Resolution
+
+func (a *Analyzer) resolveImport(sourcePath, importStr string, lang parser.Language) string {
+	importStr = strings.Trim(importStr, "\"'`")
+
+	switch lang {
+	case parser.LangTypeScript:
+		return a.resolveTSImport(sourcePath, importStr)
+	case parser.LangGo:
+		return a.resolveGoImport(sourcePath, importStr)
+	case parser.LangPython:
+		// Relative imports
+		if strings.HasPrefix(importStr, ".") {
+			return filepath.Join(filepath.Dir(sourcePath), importStr)
+		}
+		// Absolute/Package? Return as is for now.
+		return importStr
+	case parser.LangRust:
+		// crate:: or super::
+		if strings.HasPrefix(importStr, "crate::") {
+			// Try to find Cargo.toml logic? simplified:
+			return strings.Replace(importStr, "crate::", "", 1)
+		}
+		return importStr
+	default:
+		// Basic relative fallback
+		if strings.HasPrefix(importStr, ".") {
+			return filepath.Join(filepath.Dir(sourcePath), importStr)
+		}
+		return importStr
+	}
+}
+
+func (a *Analyzer) resolveTSImport(sourcePath, importStr string) string {
+	// 1. Relative
+	if strings.HasPrefix(importStr, ".") {
+		return filepath.Join(filepath.Dir(sourcePath), importStr)
+	}
+
+	// 2. TSConfig Paths
+	// Find nearest tsconfig
+	dir := filepath.Dir(sourcePath)
+	var config TSConfig
+	var found bool
+
+	// Walk up to find tsconfig
+	for {
+		if c, ok := a.tsConfigs[dir]; ok {
+			config = c
+			found = true
+			break
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	if found {
+		// Check paths
+		for pattern, targets := range config.Paths {
+			// Simple exact match or wildcard
+			// "domain/*": ["src/domain/*"]
+			patternPrefix := strings.TrimSuffix(pattern, "*")
+			if strings.HasPrefix(importStr, patternPrefix) {
+				suffix := strings.TrimPrefix(importStr, patternPrefix)
+				if len(targets) > 0 {
+					target := targets[0] // take first
+					targetPrefix := strings.TrimSuffix(target, "*")
+					// Resolve relative to baseUrl (which is relative to tsconfig dir)
+					// Assumes baseUrl is "." or "src"
+					// This is complex. Simplified:
+					// If baseUrl is set, paths are relative to it.
+					// If not, relative to tsconfig.
+					base := config.BaseUrl
+					if base == "" {
+						base = "."
+					}
+					resolved := filepath.Join(dir, base, targetPrefix+suffix)
+					return resolved
+				}
+			}
+		}
+	}
+
+	return importStr
+}
+
+func (a *Analyzer) resolveGoImport(sourcePath, importStr string) string {
+	// Find nearest go.mod
+	dir := filepath.Dir(sourcePath)
+	var mod GoMod
+	var found bool
+
+	for {
+		if m, ok := a.goMods[dir]; ok {
+			mod = m
+			found = true
+			break
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	if found {
+		if strings.HasPrefix(importStr, mod.Module) {
+			rel := strings.TrimPrefix(importStr, mod.Module)
+			return filepath.Join(dir, rel)
+		}
+	}
 	return importStr
 }
 
@@ -225,7 +372,6 @@ func (a *Analyzer) FindViolations() []domain.Violation {
 						}
 					}
 					// Rule: App cannot import Infra (strict) or should use ports.
-					// SRS says: Alert if App imports Infra concrete.
 					if lStr == "application" && tlStr == "infrastructure" {
 						violations = append(violations, domain.Violation{
 							Severity: domain.SeverityWarning,
@@ -243,6 +389,9 @@ func (a *Analyzer) FindViolations() []domain.Violation {
 	scenarios := a.filterNodes(domain.NodeKindGherkinScenario)
 	stepDefs := a.filterNodes(domain.NodeKindStepDefinition)
 
+	// Build parameter type registry
+	paramRegistry := curex.NewParameterTypeRegistry()
+
 	for _, sc := range scenarios {
 		scSteps, ok := sc.Properties["steps"].([]string)
 		if !ok {
@@ -257,7 +406,7 @@ func (a *Analyzer) FindViolations() []domain.Violation {
 				if !ok {
 					continue
 				}
-				if matchStep(cleanedStep, pattern) {
+				if matchStep(cleanedStep, pattern, paramRegistry) {
 					matched = true
 					break
 				}
@@ -283,6 +432,8 @@ func (a *Analyzer) IndexStepDefinitions() {
 	scenarios := a.filterNodes(domain.NodeKindGherkinScenario)
 	stepDefs := a.filterNodes(domain.NodeKindStepDefinition)
 
+	paramRegistry := curex.NewParameterTypeRegistry()
+
 	for _, sc := range scenarios {
 		scSteps, ok := sc.Properties["steps"].([]string)
 		if !ok {
@@ -290,8 +441,6 @@ func (a *Analyzer) IndexStepDefinitions() {
 		}
 
 		for _, stepText := range scSteps {
-			// Clean step text (remove Keyword)
-			// "Given I have 5 items" -> "I have 5 items"
 			cleanedStep := cleanStepText(stepText)
 
 			for _, sd := range stepDefs {
@@ -300,13 +449,7 @@ func (a *Analyzer) IndexStepDefinitions() {
 					continue
 				}
 
-				// Simplified Regex matching
-				// In real world, we'd use robust cucumber expression matching
-				// Here we just try to see if it matches.
-				// Pattern might be regex string.
-				// Note: StepDef pattern often assumes full match.
-
-				if matchStep(cleanedStep, pattern) {
+				if matchStep(cleanedStep, pattern, paramRegistry) {
 					a.Graph.AddEdge(sc.ID, sd.ID, domain.EdgeTypeExecutes)
 				}
 			}
@@ -322,13 +465,23 @@ func cleanStepText(step string) string {
 	return step
 }
 
-func matchStep(text, pattern string) bool {
-	// Simple check: if pattern is regex
+func matchStep(text, pattern string, registry *curex.ParameterTypeRegistry) bool {
+	// Try Cucumber Expression first if it looks like one (has {})
+	if strings.Contains(pattern, "{") && strings.Contains(pattern, "}") {
+		expression, err := curex.NewCucumberExpression(pattern, registry)
+		if err == nil {
+			args, err := expression.Match(text)
+			return err == nil && args != nil
+		}
+	}
+
+	// Fallback to Regex
 	re, err := regexp.Compile(pattern)
 	if err == nil {
 		return re.MatchString(text)
 	}
-	// Fallback to substring
+
+	// Fallback to simple substring
 	return strings.Contains(text, pattern)
 }
 

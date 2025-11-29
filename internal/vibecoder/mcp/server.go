@@ -9,19 +9,36 @@ import (
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/analysis"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/config"
 	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/domain"
 	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/graph"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/store"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/watcher"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 type VibecoderServer struct {
 	Graph    *graph.Graph
 	Analyzer *analysis.Analyzer
+	Store    *store.Store
+	Config   *config.Config
+	Watcher  *watcher.Watcher
 	RootDir  string
 }
 
 func NewServer(rootDir string) (*mcp.Server, error) {
-	g := graph.NewGraph()
+	cfg, err := config.LoadConfig(rootDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to load config: %v. Using defaults.\n", err)
+		cfg = &config.DefaultConfig
+	}
+
+	st, err := store.NewStore(filepath.Join(rootDir, cfg.PersistenceDir))
+	if err != nil {
+		return nil, fmt.Errorf("failed to init store: %w", err)
+	}
+
+	g := graph.NewGraph(st)
 	an := analysis.NewAnalyzer(g)
 
 	// Scan initial root
@@ -29,9 +46,19 @@ func NewServer(rootDir string) (*mcp.Server, error) {
 	// Index steps
 	an.IndexStepDefinitions()
 
+	w, err := watcher.NewWatcher(rootDir, an, g, cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to start file watcher: %v\n", err)
+	} else {
+		w.Start()
+	}
+
 	vs := &VibecoderServer{
 		Graph:    g,
 		Analyzer: an,
+		Store:    st,
+		Config:   cfg,
+		Watcher:  w,
 		RootDir:  rootDir,
 	}
 
