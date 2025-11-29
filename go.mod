@@ -2,8 +2,6 @@ module github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder
 
 go 1.24.3
 
-replace github.com/modelcontextprotocol/go-sdk => ../../..
-
 require github.com/modelcontextprotocol/go-sdk v0.0.0-00010101000000-000000000000
 
 require (
