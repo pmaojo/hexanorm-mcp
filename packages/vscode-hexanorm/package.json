@@ -1,0 +1,31 @@
+{
+  "name": "vscode-hexanorm",
+  "displayName": "Hexanorm",
+  "description": "Architectural Guardian for VS Code",
+  "version": "0.0.1",
+  "publisher": "hexanorm",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "hexanorm.start",
+        "title": "Hexanorm: Start Server"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "18.x",
+    "typescript": "^5.0.0"
+  }
+}
