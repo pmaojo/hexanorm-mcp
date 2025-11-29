@@ -10,40 +10,49 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/graph"
 )
 
+// ExcalidrawBinding represents the connection of an arrow to an element.
+type ExcalidrawBinding struct {
+	ElementID string  `json:"elementId"`
+	Focus     float64 `json:"focus"`
+	Gap       float64 `json:"gap"`
+}
+
 // ExcalidrawElement represents a single element in the Excalidraw scene.
 type ExcalidrawElement struct {
-	Type            string   `json:"type"`
-	Version         int      `json:"version"`
-	VersionNonce    int      `json:"versionNonce"`
-	IsDeleted       bool     `json:"isDeleted"`
-	ID              string   `json:"id"`
-	FillStyle       string   `json:"fillStyle"`
-	StrokeWidth     int      `json:"strokeWidth"`
-	StrokeStyle     string   `json:"strokeStyle"`
-	Roughness       int      `json:"roughness"`
-	Opacity         int      `json:"opacity"`
-	Angle           int      `json:"angle"`
-	X               float64  `json:"x"`
-	Y               float64  `json:"y"`
-	StrokeColor     string   `json:"strokeColor"`
-	BackgroundColor string   `json:"backgroundColor"`
-	Width           float64  `json:"width"`
-	Height          float64  `json:"height"`
-	Seed            int      `json:"seed"`
-	GroupIds        []string `json:"groupIds"`
-	Roundness       any      `json:"roundness"`
-	BoundElements   []any    `json:"boundElements"`
-	Updated         int64    `json:"updated"`
-	Link            any      `json:"link"`
-	Locked          bool     `json:"locked"`
-	Text            string   `json:"text,omitempty"`
-	FontSize        int      `json:"fontSize,omitempty"`
-	FontFamily      int      `json:"fontFamily,omitempty"`
-	TextAlign       string   `json:"textAlign,omitempty"`
-	VerticalAlign   string   `json:"verticalAlign,omitempty"`
-	StartBinding    any      `json:"startBinding,omitempty"`
-	EndBinding      any      `json:"endBinding,omitempty"`
-	Points          [][]float64 `json:"points,omitempty"`
+	Type            string             `json:"type"`
+	Version         int                `json:"version"`
+	VersionNonce    int                `json:"versionNonce"`
+	IsDeleted       bool               `json:"isDeleted"`
+	ID              string             `json:"id"`
+	FillStyle       string             `json:"fillStyle"`
+	StrokeWidth     int                `json:"strokeWidth"`
+	StrokeStyle     string             `json:"strokeStyle"`
+	Roughness       int                `json:"roughness"`
+	Opacity         int                `json:"opacity"`
+	Angle           int                `json:"angle"`
+	X               float64            `json:"x"`
+	Y               float64            `json:"y"`
+	StrokeColor     string             `json:"strokeColor"`
+	BackgroundColor string             `json:"backgroundColor"`
+	Width           float64            `json:"width"`
+	Height          float64            `json:"height"`
+	Seed            int                `json:"seed"`
+	GroupIds        []string           `json:"groupIds"`
+	Roundness       any                `json:"roundness"`
+	BoundElements   []any              `json:"boundElements"`
+	Updated         int64              `json:"updated"`
+	Link            any                `json:"link"`
+	Locked          bool               `json:"locked"`
+	Text            string             `json:"text,omitempty"`
+	FontSize        int                `json:"fontSize,omitempty"`
+	FontFamily      int                `json:"fontFamily,omitempty"`
+	TextAlign       string             `json:"textAlign,omitempty"`
+	VerticalAlign   string             `json:"verticalAlign,omitempty"`
+	StartBinding    *ExcalidrawBinding `json:"startBinding,omitempty"`
+	EndBinding      *ExcalidrawBinding `json:"endBinding,omitempty"`
+	Points          [][]float64        `json:"points,omitempty"`
+	StartArrowhead  string             `json:"startArrowhead,omitempty"`
+	EndArrowhead    string             `json:"endArrowhead,omitempty"`
 }
 
 // ExcalidrawScene represents the full file format.
@@ -189,7 +198,6 @@ func ExportExcalidraw(g *graph.Graph, outputPath string) error {
 	}
 
 	// Create Edges (Arrows)
-	// This is simplified; proper routing is hard. We just draw direct lines.
 	for _, n := range nodes {
 		edges := g.GetEdgesFrom(n.ID)
 		sourceRect, ok1 := nodeMap[n.ID]
@@ -230,6 +238,17 @@ func ExportExcalidraw(g *graph.Graph, outputPath string) error {
 				Seed:            1,
 				GroupIds:        []string{},
 				Points:          [][]float64{{0, 0}, {endX - startX, endY - startY}},
+				StartBinding: &ExcalidrawBinding{
+					ElementID: sourceRect.ID,
+					Focus:     0.1,
+					Gap:       1,
+				},
+				EndBinding: &ExcalidrawBinding{
+					ElementID: targetRect.ID,
+					Focus:     0.1,
+					Gap:       1,
+				},
+				EndArrowhead: "arrow",
 			}
 			elements = append(elements, arrow)
 		}
