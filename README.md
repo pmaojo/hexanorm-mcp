@@ -1,10 +1,10 @@
 # Hexanorm MCP
 
-Hexanorm MCP is an example implementation of a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server written in Go. It provides a specialized environment for analyzing codebase architecture, enforcing layering rules, and tracing Behavior-Driven Development (BDD) relationships.
+Hexanorm MCP provides a specialized environment for analyzing codebase architecture, enforcing layering rules, and tracing Behavior-Driven Development (BDD) relationships.
 
 ## Purpose
 
-The primary goal of Hexanorm is to demonstrate how an MCP server can expose advanced code analysis capabilities to LLMs (Large Language Models). It builds a semantic graph of the codebase that links:
+Hexanorm can expose advanced code analysis capabilities to LLMs (Large Language Models). It builds a semantic graph of the codebase that links:
 - **Requirements**
 - **Features**
 - **Code** (Functions, Classes, Files)
@@ -30,14 +30,6 @@ It uses `fsnotify` to incrementally update the analysis graph as files are creat
 
 ### Prerequisites
 - Go 1.23 or later
-
-### Installation
-Clone the repository and navigate to the directory:
-
-```bash
-git clone https://github.com/modelcontextprotocol/go-sdk.git
-cd go-sdk/examples/server/vibecoder
-```
 
 ## Usage
 
