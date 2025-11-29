@@ -1,43 +1,168 @@
-# Hexanorm MCP
+# **Hexanorm MCP — Architectural Guardian & Semantic Traceability Engine**
 
-Hexanorm MCP provides a specialized environment for analyzing codebase architecture, enforcing layering rules, and tracing Behavior-Driven Development (BDD) relationships.
+Hexanorm MCP is an **MCP (Model Context Protocol) server** designed to serve as an architectural sentinel for modern software systems.
+It combines:
 
-## Purpose
+- **Static Analysis**
+- **Semantic Graph Modeling**
+- **Hexagonal Architecture Enforcement**
+- **BDD Traceability**
+- **Impact Analysis (Blast Radius)**
+- **LLM-Friendly MCP Resources & Tools**
 
-Hexanorm can expose advanced code analysis capabilities to LLMs (Large Language Models). It builds a semantic graph of the codebase that links:
+Its purpose is to allow an AI agent (Claude, Gemini, GPT) to reason over the **intent**, **structure** and **behavior** of a codebase—what Martin Fowler describes as “_making architecture visible_”—while maintaining the rigor of **Domain-Driven Design** (Evans, 2004) and **Specification by Example** (Adzic, 2012).
 
-- **Requirements**
-- **Features**
-- **Code** (Functions, Classes, Files)
-- **Tests** (Unit tests, Gherkin Scenarios)
+---
 
-By maintaining this graph, Hexanorm allows LLMs to query the "blast radius" of changes, verify architectural constraints (e.g., Domain layer should not import Infrastructure), and ensure BDD scenarios are implemented.
+## 📘 **1. Purpose**
 
-## Features
+Hexanorm constructs a **Semantic Knowledge Graph** of the project.
+This graph models:
 
-### 1. Architecture Analysis
+- **Requirements** (external intent)
+- **Features** (logical modules)
+- **Code Elements** (classes, functions, files)
+- **Tests** (unit tests, integration tests, BDD scenarios)
+- **Gherkin Specifications** (Given/When/Then semantics)
 
-Hexanorm scans source files to detect their architectural layer (`domain`, `application`, `infrastructure`, `interface`). It parses imports to build a dependency graph and detects violations of strict layering rules (e.g., Clean Architecture or Hexagonal Architecture principles).
+This enables an LLM to:
 
-### 2. BDD Traceability
+### ✔ Identify architecture violations
 
-It parses Gherkin feature files (`.feature`) and matches them against code that implements step definitions. It can identify "BDD Drift" where scenarios exist without corresponding code implementation.
+“Domain layer depends on Infrastructure” → _Critical_.
 
-### 3. Blast Radius Calculation
+### ✔ Detect BDD inconsistencies (BDD Drift)
 
-The server exposes a tool to calculate the impact of changing a specific piece of code, tracing dependencies back to the features and requirements that might be affected.
+Scenario changed but Step Definition did not.
 
-### 4. File Watching
+### ✔ Trace requirements to implementation (Golden Thread)
 
-It uses `fsnotify` to incrementally update the analysis graph as files are created, modified, or deleted in the workspace.
+REQ → Feature → Code → Test.
 
-## Setup
+### ✔ Compute functional _blast radius_
 
-### Prerequisites
+“What requirements and scenarios might break if I modify this file?”
 
-- Go 1.23 or later
+### ✔ Guide refactorings with structural insight
 
-### Installation
+e.g., “Move this file from Infrastructure → Application”.
+
+---
+
+## 🧠 **2. Core Concepts**
+
+### **2.1 Semantic Graph Model**
+
+Each entity (Requirement, Feature, Code, Test, Scenario, StepDefinition) becomes a **typed node**, following a polymorphic schema:
+
+```json
+{
+  "id": "code:src/domain/User.ts",
+  "kind": "Code",
+  "labels": ["Domain", "Entity"],
+  "properties": {
+    "name": "User",
+    "filepath": "src/domain/User.ts"
+  },
+  "metadata": {
+    "layer": "domain",
+    "status": "OK"
+  }
+}
+```
+
+Edges represent semantic relationships:
+
+- `DEFINES`
+- `IMPLEMENTED_BY`
+- `VERIFIES`
+- `EXECUTES`
+- `CALLS`
+
+This is the **Golden Thread**.
+
+---
+
+## 🏛️ **3. Features**
+
+### **3.1 Architecture Analysis**
+
+Hexanorm enforces the rules described by Alistair Cockburn (Hexagonal Architecture):
+
+- **Domain** → can import nothing but domain
+- **Application** → can depend on Domain and Ports
+- **Infrastructure** → can depend on anything
+- **Interface/Adapter** → binds the outside world
+
+AST parsing (via **Tree-sitter**) provides precise import and dependency extraction.
+
+Violations are reported as structured objects:
+
+```json
+{
+  "severity": "CRITICAL",
+  "message": "Domain Rule Broken: User.ts imports S3Bucket (Infrastructure)",
+  "file": "src/domain/User.ts",
+  "kind": "ARCH_LAYER_VIOLATION"
+}
+```
+
+---
+
+### **3.2 BDD Traceability & Drift Detection**
+
+Hexanorm parses:
+
+- `.feature` files → `GherkinFeature`, `GherkinScenario`
+- Step Definitions in code → via AST (`@Given`, `@When`, `@Then` patterns)
+- Links Scenarios → Step Definitions → Code → Requirements
+
+It can detect:
+
+#### **BDD Drift**
+
+When the Gherkin text changes (step text hash mismatch) but StepDefinition does not.
+
+This implements the consistency layer described in _BDD in Action_ (Smart, 2014).
+
+---
+
+### **3.3 Blast Radius Analysis**
+
+Given any code element:
+
+```json
+blast_radius("src/domain/VatService.ts")
+```
+
+Hexanorm returns all potentially impacted nodes:
+
+- Features using it
+- Requirements implemented by it
+- Gherkin Scenarios that indirectly execute code paths touching it
+
+This converts architectural impact into a queryable structure—what NASA’s IV&V facility calls _Functional Integrity_.
+
+---
+
+### **3.4 File Watching / Real-Time Updates**
+
+Using `fsnotify`, Hexanorm updates:
+
+- parsed AST
+- graph nodes
+- violations
+- traceability matrix
+
+As soon as the developer saves a file.
+
+This achieves “active architectural governance”.
+
+---
+
+## 🚀 **4. Usage**
+
+### **4.1 Installation**
 
 1.  **Clone the repository:**
 
@@ -51,30 +176,19 @@ It uses `fsnotify` to incrementally update the analysis graph as files are creat
     go build -o hexanorm-server
     ```
 
-### Configuration (Optional)
+### **4.2 Running the MCP Server**
 
-You can configure the analysis by creating a `hexanorm.json` file in your project root:
-
-```json
-{
-  "excluded_dirs": ["node_modules", "dist", ".git"],
-  "included_layers": ["domain", "application", "infrastructure", "interface"],
-  "persistence_dir": ".hexanorm"
-}
+```bash
+go run . /path/to/project
 ```
 
-## Usage
+Hexanorm runs on STDIO and integrates with any MCP client (Claude Desktop, model servers, agent runtimes).
 
-### Integration with Claude Desktop
+---
 
-To use Hexanorm with Claude Desktop, add the following to your `claude_desktop_config.json`:
+## 🧩 **5. Integration with Claude Desktop**
 
-**Config File Location:**
-
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-**Configuration:**
+Add to `claude_desktop_config.json`:
 
 ```json
 {
@@ -87,22 +201,53 @@ To use Hexanorm with Claude Desktop, add the following to your `claude_desktop_c
 }
 ```
 
-_Note: You can also use `go run .` as the command if you prefer not to build the binary._
+_Note: Replace `/absolute/path/to/target/project` with the directory you want to analyze._
 
-Replace `/absolute/path/to/target/project` with the directory you want to analyze.
+---
 
-### Available Tools
+## 🛠️ **6. Available Tools**
 
-Once connected, the following tools are available to the LLM:
+| Tool                       | Purpose                                             |
+| -------------------------- | --------------------------------------------------- |
+| **scaffold_feature**       | Generates full Hexagonal skeleton for a new feature |
+| **link_requirement**       | Manually link Code → Requirement                    |
+| **blast_radius**           | Query impact analysis                               |
+| **index_step_definitions** | Parse and rebuild BDD step definitions              |
 
-- `scaffold_feature`: Creates a directory structure for a new feature (DDD style).
-- `link_requirement`: Manually links a requirement ID to a file.
-- `blast_radius`: Analyzes the downstream impact of changing a specific code node.
-- `index_step_definitions`: Re-indexes BDD step definitions.
+---
 
-### Available Resources
+## 📡 **7. Available Resources**
 
-- `mcp://hexanorm/status`: Current health and node count.
-- `mcp://hexanorm/violations`: List of architectural and BDD violations.
-- `mcp://hexanorm/traceability_matrix`: Matrix showing relationships between requirements, code, and tests.
-- `mcp://hexanorm/live_docs`: Markdown representation of the current graph nodes.
+| Resource                             | Description                            |
+| ------------------------------------ | -------------------------------------- |
+| `mcp://hexanorm/status`              | Health of graph + node counts          |
+| `mcp://hexanorm/violations`          | All architecture + BDD violations      |
+| `mcp://hexanorm/traceability_matrix` | Full Golden Thread map                 |
+| `mcp://hexanorm/live_docs`           | Markdown documentation of architecture |
+
+---
+
+## 🧭 **8. Bibliographic Foundations**
+
+Hexanorm’s conceptual design aligns with:
+
+- Eric Evans — _Domain-Driven Design_ (2004)
+- Alistair Cockburn — _Hexagonal Architecture_ (2005)
+- Jez Humble — _Continuous Delivery_ (2011)
+- Gojko Adzic — _Specification by Example_ (2012)
+- Sam Newman — _Building Microservices_ (2015)
+
+---
+
+## 🎯 **9. Summary**
+
+Hexanorm MCP transforms architecture into a **live, queryable knowledge graph**.
+It allows LLM agents to:
+
+- understand intent,
+- enforce structure,
+- verify behavior,
+- detect regressions,
+- and guide developers through complex change operations.
+
+It is an _intelligent architectural guardian_, a "Cognitive Linter", and a bridge between **human architecture** and **automated reasoning**.
