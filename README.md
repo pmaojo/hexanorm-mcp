@@ -227,7 +227,7 @@ _Note: Replace `/absolute/path/to/target/project` with the directory you want to
 
 ---
 
-## 🎨 **8. Excalidraw Visualization** (Not working. WIP)
+## 🎨 **8. Excalidraw Visualization**
 
 Hexanorm bridges the gap between code and diagrams by allowing you to **export your architecture directly to Excalidraw**.
 
@@ -253,7 +253,33 @@ You can then open `architecture.excalidraw` in [excalidraw.com](https://excalidr
 
 ---
 
-## 🧭 **9. Bibliographic Foundations**
+## 🖥️ **9. Terminal Interface (TUI)**
+
+Hexanorm includes a rich **Terminal User Interface (TUI)** built with [Bubble Tea](https://github.com/charmbracelet/bubbletea).
+
+### **Features**
+
+- **Visual Graph**: Explore your architecture layers (Domain, Application, Infrastructure, Interface) in a column-based view.
+- **Interactive Navigation**: Use arrow keys to navigate between layers and nodes.
+- **Instant Feedback**: View node details, connections, and **architectural violations** in real-time.
+
+### **Usage**
+
+To launch the TUI:
+
+```bash
+hexanorm tui [rootDir]
+```
+
+Example:
+
+```bash
+./hexanorm-server tui .
+```
+
+---
+
+## 🧭 **10. Bibliographic Foundations**
 
 Hexanorm’s conceptual design aligns with:
 
