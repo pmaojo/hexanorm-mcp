@@ -12,7 +12,7 @@ import (
 )
 
 func TestVibecoder(t *testing.T) {
-	g := graph.NewGraph()
+	g := graph.NewGraph(nil) // Use in-memory for tests
 	an := analysis.NewAnalyzer(g)
 
 	cwd, _ := os.Getwd()

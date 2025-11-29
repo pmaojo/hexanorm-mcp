@@ -2,10 +2,14 @@ package parser
 
 import (
 	"context"
+	"path/filepath"
 	"strings"
 
 	sitter "github.com/smacker/go-tree-sitter"
-	"github.com/smacker/go-tree-sitter/java"
+	"github.com/smacker/go-tree-sitter/golang"
+	"github.com/smacker/go-tree-sitter/php"
+	"github.com/smacker/go-tree-sitter/python"
+	"github.com/smacker/go-tree-sitter/rust"
 	"github.com/smacker/go-tree-sitter/typescript/typescript"
 )
 
@@ -13,7 +17,10 @@ type Language string
 
 const (
 	LangTypeScript Language = "typescript"
-	LangJava       Language = "java"
+	LangGo         Language = "go"
+	LangPython     Language = "python"
+	LangRust       Language = "rust"
+	LangPHP        Language = "php"
 	LangUnknown    Language = "unknown"
 )
 
@@ -24,23 +31,42 @@ type StepDefFound struct {
 }
 
 func DetectLanguage(filename string) Language {
-	if strings.HasSuffix(filename, ".ts") || strings.HasSuffix(filename, ".tsx") {
+	ext := filepath.Ext(filename)
+	switch ext {
+	case ".ts", ".tsx":
 		return LangTypeScript
-	}
-	if strings.HasSuffix(filename, ".java") {
-		return LangJava
+	case ".go":
+		return LangGo
+	case ".py":
+		return LangPython
+	case ".rs":
+		return LangRust
+	case ".php":
+		return LangPHP
 	}
 	return LangUnknown
 }
 
-func ParseImports(content []byte, lang Language) ([]string, error) {
-	var sl *sitter.Language
+func getLanguage(lang Language) *sitter.Language {
 	switch lang {
 	case LangTypeScript:
-		sl = typescript.GetLanguage()
-	case LangJava:
-		sl = java.GetLanguage()
+		return typescript.GetLanguage()
+	case LangGo:
+		return golang.GetLanguage()
+	case LangPython:
+		return python.GetLanguage()
+	case LangRust:
+		return rust.GetLanguage()
+	case LangPHP:
+		return php.GetLanguage()
 	default:
+		return nil
+	}
+}
+
+func ParseImports(content []byte, lang Language) ([]string, error) {
+	sl := getLanguage(lang)
+	if sl == nil {
 		return nil, nil
 	}
 
@@ -51,15 +77,33 @@ func ParseImports(content []byte, lang Language) ([]string, error) {
 	root := tree.RootNode()
 
 	var queryStr string
-	if lang == LangTypeScript {
+	switch lang {
+	case LangTypeScript:
 		queryStr = `
 		(import_statement source: (string (string_fragment) @path))
 		(export_statement source: (string (string_fragment) @path))
 		`
-	} else if lang == LangJava {
-		// Java imports are usually package names, not file paths.
-		// But for analysis we collect them.
-		queryStr = `(import_declaration (scoped_identifier) @path)`
+	case LangGo:
+		queryStr = `
+		(import_spec path: (string_literal) @path)
+		`
+	case LangPython:
+		queryStr = `
+		(import_from_statement module_name: (dotted_name) @path)
+		(import_statement name: (dotted_name) @path)
+		`
+	case LangRust:
+		queryStr = `
+		(use_declaration argument: (scoped_identifier) @path)
+		`
+	case LangPHP:
+		queryStr = `
+		(namespace_use_clause (qualified_name) @path)
+		`
+	}
+
+	if queryStr == "" {
+		return nil, nil
 	}
 
 	q, err := sitter.NewQuery([]byte(queryStr), sl)
@@ -78,6 +122,8 @@ func ParseImports(content []byte, lang Language) ([]string, error) {
 		for _, c := range m.Captures {
 			if c.Node != nil {
 				text := string(content[c.Node.StartByte():c.Node.EndByte()])
+				// Clean quotes for some languages
+				text = strings.Trim(text, "\"'`")
 				imports = append(imports, text)
 			}
 		}
@@ -87,13 +133,8 @@ func ParseImports(content []byte, lang Language) ([]string, error) {
 }
 
 func ParseStepDefinitions(content []byte, lang Language) ([]StepDefFound, error) {
-	var sl *sitter.Language
-	switch lang {
-	case LangTypeScript:
-		sl = typescript.GetLanguage()
-	case LangJava:
-		sl = java.GetLanguage()
-	default:
+	sl := getLanguage(lang)
+	if sl == nil {
 		return nil, nil
 	}
 
@@ -102,11 +143,11 @@ func ParseStepDefinitions(content []byte, lang Language) ([]StepDefFound, error)
 	tree, _ := parser.ParseCtx(context.Background(), nil, content)
 	root := tree.RootNode()
 
-	// Heuristic queries for Cucumber steps
-	// Note: these are simplified and might need tuning for specific frameworks
+	// Queries for step definitions
+	// TODO: Add Go (Godog), Python (Behave), Rust (Cucumber), PHP (Behat)
 	var queryStr string
-	if lang == LangTypeScript {
-		// Matches: Given("pattern", function() {})
+	switch lang {
+	case LangTypeScript:
 		queryStr = `
 		(call_expression
 			function: (identifier) @keyword
@@ -115,19 +156,36 @@ func ParseStepDefinitions(content []byte, lang Language) ([]StepDefFound, error)
 			)
 		)
 		`
-	} else if lang == LangJava {
-		// Matches: @Given("pattern") public void method()
+	case LangGo:
+		// Godog: ctx.Step(`^regex$`, handler)
+		// Or: suite.Step(`^regex$`, handler)
 		queryStr = `
-		(method_declaration
-			(modifiers
-				(marker_annotation
-					name: (identifier) @keyword
-					arguments: (argument_list (string (string_fragment) @pattern))
-				)
+		(call_expression
+			function: (selector_expression field: (field_identifier) @method)
+			arguments: (argument_list
+				(raw_string_literal) @pattern
 			)
-			name: (identifier) @method
+			(#match? @method "^(Step|Given|When|Then)$")
 		)
 		`
+	case LangPython:
+		// Behave: @given("pattern")
+		queryStr = `
+		(decorated_definition
+			decorator: (decorator
+				call: (call
+					function: (identifier) @keyword
+					arguments: (argument_list (string) @pattern)
+				)
+			)
+			definition: (function_definition name: (identifier) @method)
+		)
+		`
+	// Rust and PHP would need specific framework queries. Leaving as TODO/Partial for now.
+	}
+
+	if queryStr == "" {
+		return nil, nil
 	}
 
 	q, err := sitter.NewQuery([]byte(queryStr), sl)
@@ -139,8 +197,6 @@ func ParseStepDefinitions(content []byte, lang Language) ([]StepDefFound, error)
 
 	var results []StepDefFound
 
-	// We need to group captures by match to keep keyword, pattern, and method together
-	// iterate matches
 	for {
 		m, ok := qc.NextMatch()
 		if !ok {
@@ -154,14 +210,13 @@ func ParseStepDefinitions(content []byte, lang Language) ([]StepDefFound, error)
 			name := q.CaptureNameForId(c.Index)
 			if name == "pattern" {
 				pattern = string(content[c.Node.StartByte():c.Node.EndByte()])
+				pattern = strings.Trim(pattern, "\"`'")
 				line = int(c.Node.StartPoint().Row) + 1
 			} else if name == "method" {
 				method = string(content[c.Node.StartByte():c.Node.EndByte()])
 			}
 		}
 
-		// Filter for Gherkin keywords if needed?
-		// The query assumes specific structure.
 		if pattern != "" {
 			results = append(results, StepDefFound{
 				Pattern:      pattern,
