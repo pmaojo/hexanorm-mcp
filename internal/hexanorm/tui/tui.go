@@ -15,8 +15,6 @@ import (
 )
 
 var (
-	docStyle = lipgloss.NewStyle().Margin(1, 2)
-
 	focusedStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("62"))
@@ -52,8 +50,8 @@ type Model struct {
 	focused  int
 	viewport viewport.Model
 
-	ready bool
-	width int
+	ready  bool
+	width  int
 	height int
 }
 
@@ -63,13 +61,13 @@ func NewModel(g *graph.Graph, a *analysis.Analyzer) Model {
 	lists := make([]list.Model, len(layers))
 
 	nodes := g.GetAllNodes()
-	
+
 	// Group nodes
 	grouped := make(map[string][]list.Item)
 	for _, n := range nodes {
 		layer := "Other"
 		if l, ok := n.Metadata["layer"].(string); ok {
-			layer = strings.Title(l)
+			layer = toTitle(l)
 		} else if n.Kind == domain.NodeKindRequirement {
 			layer = "Domain" // Put reqs in Domain for now
 		}
@@ -139,7 +137,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		
+
 		if !m.ready {
 			m.viewport = viewport.New(msg.Width, msg.Height/3)
 			m.viewport.YPosition = msg.Height - msg.Height/3
@@ -243,4 +241,11 @@ func shortID(id string) string {
 		return parts[len(parts)-1]
 	}
 	return id
+}
+
+func toTitle(s string) string {
+	if s == "" {
+		return ""
+	}
+	return strings.ToUpper(string(s[0])) + strings.ToLower(s[1:])
 }
