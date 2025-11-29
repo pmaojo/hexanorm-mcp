@@ -68,8 +68,7 @@ type ExcalidrawScene struct {
 // ExportExcalidraw generates an Excalidraw JSON file from the graph.
 func ExportExcalidraw(g *graph.Graph, outputPath string) error {
 	nodes := g.GetAllNodes()
-	elements := []ExcalidrawElement{}
-
+	
 	// Layout constants
 	const (
 		nodeWidth  = 200.0
@@ -88,7 +87,10 @@ func ExportExcalidraw(g *graph.Graph, outputPath string) error {
 		"other":          {},
 	}
 
-	nodeMap := make(map[string]ExcalidrawElement) // ID -> Element
+	// Map to store generated elements by ID to update them later
+	rectMap := make(map[string]*ExcalidrawElement) 
+	// We need to keep track of order to reconstruct the slice
+	rectOrder := []string{}
 
 	for _, n := range nodes {
 		layer := "other"
@@ -106,6 +108,7 @@ func ExportExcalidraw(g *graph.Graph, outputPath string) error {
 
 	currentY := 0.0
 
+	// Pass 1: Create Rectangles
 	for _, layerName := range layerOrder {
 		layerNodes := layers[layerName]
 		if len(layerNodes) == 0 {
@@ -138,7 +141,7 @@ func ExportExcalidraw(g *graph.Graph, outputPath string) error {
 		currentX := 0.0
 		for _, n := range layerNodes {
 			// Create Rectangle
-			rect := ExcalidrawElement{
+			rect := &ExcalidrawElement{
 				Type:            "rectangle",
 				Version:         1,
 				VersionNonce:    0,
@@ -159,57 +162,38 @@ func ExportExcalidraw(g *graph.Graph, outputPath string) error {
 				Seed:            1,
 				GroupIds:        []string{},
 				Roundness:       map[string]int{"type": 3},
+				BoundElements:   []any{}, // Initialize empty
 			}
-			elements = append(elements, rect)
-			nodeMap[n.ID] = rect
+			rectMap[n.ID] = rect
+			rectOrder = append(rectOrder, n.ID)
 
-			// Create Text Label
-			text := ExcalidrawElement{
-				Type:            "text",
-				Version:         1,
-				VersionNonce:    0,
-				IsDeleted:       false,
-				ID:              n.ID + "-text",
-				FillStyle:       "solid",
-				StrokeWidth:     1,
-				StrokeStyle:     "solid",
-				Roughness:       1,
-				Opacity:         100,
-				Angle:           0,
-				X:               currentX + 10,
-				Y:               currentY + 10,
-				StrokeColor:     "#000000",
-				BackgroundColor: "transparent",
-				Width:           nodeWidth - 20,
-				Height:          nodeHeight - 20,
-				Seed:            1,
-				GroupIds:        []string{},
-				Text:            fmt.Sprintf("%s\n(%s)", n.ID, n.Kind),
-				FontSize:        16,
-				FontFamily:      1,
-				TextAlign:       "left",
-				VerticalAlign:   "top",
-			}
-			elements = append(elements, text)
+			// Create Text Label (not stored in map for binding, just visual)
+			// We'll add it to the final list later.
+			// Actually, let's store it to add to list in order.
+			// For simplicity, we'll just append text elements immediately after rects in the final construction.
 
 			currentX += nodeWidth + paddingX
 		}
 		currentY += nodeHeight + layerGap
 	}
 
-	// Create Edges (Arrows)
+	arrows := []*ExcalidrawElement{}
+
+	// Pass 2: Create Edges (Arrows) and update BoundElements
 	for _, n := range nodes {
 		edges := g.GetEdgesFrom(n.ID)
-		sourceRect, ok1 := nodeMap[n.ID]
+		sourceRect, ok1 := rectMap[n.ID]
 		if !ok1 {
 			continue
 		}
 
 		for _, e := range edges {
-			targetRect, ok2 := nodeMap[e.TargetID]
+			targetRect, ok2 := rectMap[e.TargetID]
 			if !ok2 {
 				continue
 			}
+
+			arrowID := fmt.Sprintf("%s-%s", n.ID, e.TargetID)
 
 			// Calculate start and end points (center to center roughly)
 			startX := sourceRect.X + nodeWidth/2
@@ -217,12 +201,12 @@ func ExportExcalidraw(g *graph.Graph, outputPath string) error {
 			endX := targetRect.X + nodeWidth/2
 			endY := targetRect.Y
 
-			arrow := ExcalidrawElement{
+			arrow := &ExcalidrawElement{
 				Type:            "arrow",
 				Version:         1,
 				VersionNonce:    0,
 				IsDeleted:       false,
-				ID:              fmt.Sprintf("%s-%s", n.ID, e.TargetID),
+				ID:              arrowID,
 				FillStyle:       "solid",
 				StrokeWidth:     1,
 				StrokeStyle:     "solid",
@@ -250,15 +234,62 @@ func ExportExcalidraw(g *graph.Graph, outputPath string) error {
 				},
 				EndArrowhead: "arrow",
 			}
-			elements = append(elements, arrow)
+			arrows = append(arrows, arrow)
+
+			// Update BoundElements on Source and Target
+			sourceRect.BoundElements = append(sourceRect.BoundElements, map[string]string{"id": arrowID, "type": "arrow"})
+			targetRect.BoundElements = append(targetRect.BoundElements, map[string]string{"id": arrowID, "type": "arrow"})
 		}
+	}
+
+	// Construct final elements list
+	finalElements := []ExcalidrawElement{}
+	
+	// Add Rectangles and their Texts
+	for _, id := range rectOrder {
+		rect := rectMap[id]
+		finalElements = append(finalElements, *rect)
+
+		// Re-create text (didn't store it to avoid complexity)
+		text := ExcalidrawElement{
+			Type:            "text",
+			Version:         1,
+			VersionNonce:    0,
+			IsDeleted:       false,
+			ID:              rect.ID + "-text",
+			FillStyle:       "solid",
+			StrokeWidth:     1,
+			StrokeStyle:     "solid",
+			Roughness:       1,
+			Opacity:         100,
+			Angle:           0,
+			X:               rect.X + 10,
+			Y:               rect.Y + 10,
+			StrokeColor:     "#000000",
+			BackgroundColor: "transparent",
+			Width:           nodeWidth - 20,
+			Height:          nodeHeight - 20,
+			Seed:            1,
+			GroupIds:        []string{},
+			Text:            fmt.Sprintf("%s\n(%s)", rect.ID, "Node"), // simplified kind
+			FontSize:        16,
+			FontFamily:      1,
+			TextAlign:       "left",
+			VerticalAlign:   "top",
+		}
+		finalElements = append(finalElements, text)
+	}
+
+	// Add Arrows
+	for _, arrow := range arrows {
+		finalElements = append(finalElements, *arrow)
 	}
 
 	scene := ExcalidrawScene{
 		Type:     "excalidraw",
 		Version:  2,
 		Source:   "hexanorm",
-		Elements: elements,
+		Elements: finalElements,
 		AppState: map[string]any{"viewBackgroundColor": "#ffffff"},
 		Files:    map[string]any{},
 	}
