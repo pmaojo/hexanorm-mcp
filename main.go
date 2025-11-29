@@ -13,30 +13,41 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/export"
 	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/graph"
 	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/mcp"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/tui"
 	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/store"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // main is the entry point for the Hexanorm MCP server.
 // It parses command-line arguments to determine the root directory to analyze
 // and starts the MCP server over stdio.
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "export" {
-		handleExport()
-		return
-	}
-
-	rootDir := "."
+	// Handle CLI commands
 	if len(os.Args) > 1 {
-		rootDir = os.Args[1]
+		switch os.Args[1] {
+		case "export":
+			handleExport(os.Args[2:])
+			return
+		case "tui":
+			handleTUI(os.Args[2:])
+			return
+		}
 	}
 
-	fmt.Printf("Starting Hexanorm Server in %s...\n", rootDir)
+	// Default: Run MCP Server
+	root := "."
+	if len(os.Args) > 1 {
+		root = os.Args[1]
+	}
+
+	fmt.Printf("Starting Hexanorm Server in %s...\n", root)
 
 	// Create server
-	server, err := mcp.NewServer(rootDir)
+	server, err := mcp.NewServer(root)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(os.Stderr, "Failed to create server: %v\n", err)
+		os.Exit(1)
 	}
 
 	// Run server
@@ -45,53 +56,78 @@ func main() {
 	}
 }
 
-func handleExport() {
+func handleExport(args []string) {
 	exportCmd := flag.NewFlagSet("export", flag.ExitOnError)
-	format := exportCmd.String("format", "excalidraw", "Output format (excalidraw)")
-	out := exportCmd.String("out", "architecture.excalidraw", "Output file path")
-	
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: hexanorm export --format=excalidraw --out=file.excalidraw [rootDir]")
-		os.Exit(1)
+	format := exportCmd.String("format", "json", "Export format (json, excalidraw)")
+	out := exportCmd.String("out", "architecture.json", "Output file path")
+
+	exportCmd.Parse(args)
+
+	rootDir := "."
+	if exportCmd.NArg() > 0 {
+		rootDir = exportCmd.Arg(0)
 	}
 
-	exportCmd.Parse(os.Args[2:])
-	
-	args := exportCmd.Args()
+	absRoot, _ := filepath.Abs(rootDir)
+
+	// Init Graph
+	cfg, err := config.LoadConfig(absRoot)
+	if err != nil {
+		cfg = &config.DefaultConfig
+	}
+	st, err := store.NewStore(filepath.Join(absRoot, cfg.PersistenceDir))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to init store: %v\n", err)
+		os.Exit(1)
+	}
+	g := graph.NewGraph(st)
+	an := analysis.NewAnalyzer(g)
+
+	scanDirectory(absRoot, an)
+
+	fmt.Printf("Exporting architecture from %s to %s (format: %s)...\n", rootDir, *out, *format)
+
+	if *format == "excalidraw" {
+		err = export.ExportExcalidraw(g, *out)
+	} else {
+		// Default JSON placeholder
+		fmt.Println("JSON export not implemented yet")
+	}
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Export failed: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("Export successful!")
+}
+
+func handleTUI(args []string) {
 	rootDir := "."
 	if len(args) > 0 {
 		rootDir = args[0]
 	}
+	absRoot, _ := filepath.Abs(rootDir)
 
-	fmt.Printf("Exporting architecture from %s to %s (format: %s)...\n", rootDir, *out, *format)
-
-	// Initialize components (similar to NewServer but lightweight)
-	cfg, err := config.LoadConfig(rootDir)
+	// Init Graph
+	cfg, err := config.LoadConfig(absRoot)
 	if err != nil {
 		cfg = &config.DefaultConfig
 	}
-
-	st, err := store.NewStore(filepath.Join(rootDir, cfg.PersistenceDir))
+	st, err := store.NewStore(filepath.Join(absRoot, cfg.PersistenceDir))
 	if err != nil {
-		log.Fatalf("Failed to init store: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to init store: %v\n", err)
+		os.Exit(1)
 	}
-	defer st.Close()
-
 	g := graph.NewGraph(st)
-	
-	// If store is empty, we might want to scan? 
-	// For now assume store has data or user ran server once.
-	// Actually, let's scan to be safe/useful for CI usage.
 	an := analysis.NewAnalyzer(g)
-	scanDirectory(rootDir, an)
 
-	if *format == "excalidraw" {
-		if err := export.ExportExcalidraw(g, *out); err != nil {
-			log.Fatalf("Export failed: %v", err)
-		}
-		fmt.Println("Export successful!")
-	} else {
-		log.Fatalf("Unknown format: %s", *format)
+	scanDirectory(absRoot, an)
+
+	// Start TUI
+	p := tea.NewProgram(tui.NewModel(g, an), tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Alas, there's been an error: %v", err)
+		os.Exit(1)
 	}
 }
 

@@ -19,8 +19,7 @@ var (
 
 	focusedStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("62")).
-			TitleForeground(lipgloss.Color("62"))
+			BorderForeground(lipgloss.Color("62"))
 
 	normalStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
