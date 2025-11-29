@@ -227,7 +227,7 @@ _Note: Replace `/absolute/path/to/target/project` with the directory you want to
 
 ---
 
-## 🎨 **8. Excalidraw Visualization**
+## 🎨 **8. Excalidraw Visualization** (Not working. WIP)
 
 Hexanorm bridges the gap between code and diagrams by allowing you to **export your architecture directly to Excalidraw**.
 
