@@ -189,7 +189,7 @@ func ParseStepDefinitions(content []byte, lang Language) ([]StepDefFound, error)
 			definition: (function_definition name: (identifier) @method)
 		)
 		`
-	// Rust and PHP would need specific framework queries. Leaving as TODO/Partial for now.
+		// Rust and PHP would need specific framework queries. Leaving as TODO/Partial for now.
 	}
 
 	if queryStr == "" {

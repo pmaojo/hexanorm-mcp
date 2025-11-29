@@ -10,43 +10,43 @@ import (
 
 // Excalidraw structs
 type ExcalidrawDoc struct {
-	Type     string               `json:"type"`
-	Version  int                  `json:"version"`
-	Source   string               `json:"source"`
-	Elements []ExcalidrawElement  `json:"elements"`
-	AppState ExcalidrawAppState   `json:"appState"`
+	Type     string              `json:"type"`
+	Version  int                 `json:"version"`
+	Source   string              `json:"source"`
+	Elements []ExcalidrawElement `json:"elements"`
+	AppState ExcalidrawAppState  `json:"appState"`
 }
 
 type ExcalidrawElement struct {
-	ID              string   `json:"id"`
-	Type            string   `json:"type"`
-	X               float64  `json:"x"`
-	Y               float64  `json:"y"`
-	Width           float64  `json:"width"`
-	Height          float64  `json:"height"`
-	Angle           float64  `json:"angle"`
-	StrokeColor     string   `json:"strokeColor"`
-	BackgroundColor string   `json:"backgroundColor"`
-	FillStyle       string   `json:"fillStyle"`
-	StrokeWidth     float64  `json:"strokeWidth"`
-	StrokeStyle     string   `json:"strokeStyle"`
-	Roughness       float64  `json:"roughness"`
-	Opacity         float64  `json:"opacity"`
-	GroupID         []string `json:"groupIds"`
+	ID              string    `json:"id"`
+	Type            string    `json:"type"`
+	X               float64   `json:"x"`
+	Y               float64   `json:"y"`
+	Width           float64   `json:"width"`
+	Height          float64   `json:"height"`
+	Angle           float64   `json:"angle"`
+	StrokeColor     string    `json:"strokeColor"`
+	BackgroundColor string    `json:"backgroundColor"`
+	FillStyle       string    `json:"fillStyle"`
+	StrokeWidth     float64   `json:"strokeWidth"`
+	StrokeStyle     string    `json:"strokeStyle"`
+	Roughness       float64   `json:"roughness"`
+	Opacity         float64   `json:"opacity"`
+	GroupID         []string  `json:"groupIds"`
 	BoundElements   []Binding `json:"boundElements,omitempty"`
 
 	// For Text
-	Text           string  `json:"text,omitempty"`
-	FontSize       float64 `json:"fontSize,omitempty"`
-	FontFamily     int     `json:"fontFamily,omitempty"`
-	TextAlign      string  `json:"textAlign,omitempty"`
-	VerticalAlign  string  `json:"verticalAlign,omitempty"`
+	Text          string  `json:"text,omitempty"`
+	FontSize      float64 `json:"fontSize,omitempty"`
+	FontFamily    int     `json:"fontFamily,omitempty"`
+	TextAlign     string  `json:"textAlign,omitempty"`
+	VerticalAlign string  `json:"verticalAlign,omitempty"`
 
 	// For Arrow
-	Points      [][]float64 `json:"points,omitempty"`
-	StartBinding *Binding   `json:"startBinding,omitempty"`
-	EndBinding   *Binding   `json:"endBinding,omitempty"`
-	EndArrowhead string     `json:"endArrowhead,omitempty"`
+	Points       [][]float64 `json:"points,omitempty"`
+	StartBinding *Binding    `json:"startBinding,omitempty"`
+	EndBinding   *Binding    `json:"endBinding,omitempty"`
+	EndArrowhead string      `json:"endArrowhead,omitempty"`
 }
 
 type Binding struct {
@@ -82,10 +82,14 @@ func generateExcalidraw(g *graph.Graph) ([]byte, error) {
 		case domain.NodeKindCode:
 			layer, _ := n.Metadata["layer"].(string)
 			switch layer {
-			case "domain": cIndex = 2
-			case "application": cIndex = 3
-			case "infrastructure": cIndex = 4
-			case "interface": cIndex = 5
+			case "domain":
+				cIndex = 2
+			case "application":
+				cIndex = 3
+			case "infrastructure":
+				cIndex = 4
+			case "interface":
+				cIndex = 5
 			default:
 				// check if test
 				if layer == "" && (n.Kind == domain.NodeKindTest || n.Kind == domain.NodeKindStepDefinition) {
@@ -106,13 +110,13 @@ func generateExcalidraw(g *graph.Graph) ([]byte, error) {
 
 		// Add Column Header
 		header := ExcalidrawElement{
-			ID: fmt.Sprintf("header-%d", col),
-			Type: "text",
-			X: startX,
-			Y: 50,
-			Text: getColName(col),
-			FontSize: 20,
-			FontFamily: 1,
+			ID:          fmt.Sprintf("header-%d", col),
+			Type:        "text",
+			X:           startX,
+			Y:           50,
+			Text:        getColName(col),
+			FontSize:    20,
+			FontFamily:  1,
 			StrokeColor: "#000000",
 		}
 		elements = append(elements, header)
@@ -125,11 +129,16 @@ func generateExcalidraw(g *graph.Graph) ([]byte, error) {
 
 			bgColor := "#ffffff"
 			switch n.Kind {
-			case domain.NodeKindRequirement: bgColor = "#ffec99" // yellow
-			case domain.NodeKindCode: bgColor = "#d0ebff" // blue
-			case domain.NodeKindFeature: bgColor = "#b2f2bb" // green
-			case domain.NodeKindGherkinScenario: bgColor = "#b2f2bb"
-			case domain.NodeKindStepDefinition: bgColor = "#e599f7" // purple
+			case domain.NodeKindRequirement:
+				bgColor = "#ffec99" // yellow
+			case domain.NodeKindCode:
+				bgColor = "#d0ebff" // blue
+			case domain.NodeKindFeature:
+				bgColor = "#b2f2bb" // green
+			case domain.NodeKindGherkinScenario:
+				bgColor = "#b2f2bb"
+			case domain.NodeKindStepDefinition:
+				bgColor = "#e599f7" // purple
 			}
 
 			// Rectangle
@@ -173,11 +182,15 @@ func generateExcalidraw(g *graph.Graph) ([]byte, error) {
 	for _, n := range nodes {
 		edges := g.GetEdgesFrom(n.ID)
 		startP, ok1 := nodePos[n.ID]
-		if !ok1 { continue }
+		if !ok1 {
+			continue
+		}
 
 		for _, e := range edges {
 			endP, ok2 := nodePos[e.TargetID]
-			if !ok2 { continue }
+			if !ok2 {
+				continue
+			}
 
 			// Simple straight line (simplified)
 			// Excalidraw expects points relative to X,Y? No, points are relative to 0,0 of the arrow?
@@ -234,14 +247,22 @@ func generateExcalidraw(g *graph.Graph) ([]byte, error) {
 
 func getColName(i int) string {
 	switch i {
-	case 0: return "Requirements"
-	case 1: return "Features / BDD"
-	case 2: return "Domain"
-	case 3: return "Application"
-	case 4: return "Infrastructure"
-	case 5: return "Interface"
-	case 6: return "Tests / Steps"
-	default: return "Misc"
+	case 0:
+		return "Requirements"
+	case 1:
+		return "Features / BDD"
+	case 2:
+		return "Domain"
+	case 3:
+		return "Application"
+	case 4:
+		return "Infrastructure"
+	case 5:
+		return "Interface"
+	case 6:
+		return "Tests / Steps"
+	default:
+		return "Misc"
 	}
 }
 

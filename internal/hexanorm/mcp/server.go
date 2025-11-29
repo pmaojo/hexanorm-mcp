@@ -190,9 +190,9 @@ func (hs *HexanormServer) scaffoldFeature(ctx context.Context, req *mcp.CallTool
 
 func (hs *HexanormServer) linkRequirement(ctx context.Context, req *mcp.CallToolRequest, input LinkRequirementInput) (*mcp.CallToolResult, any, error) {
 	// Create Requirement Node if not exists
-	reqNode, exists := hs.Graph.GetNode(input.ReqID)
+	_, exists := hs.Graph.GetNode(input.ReqID)
 	if !exists {
-		reqNode = &domain.Node{
+		reqNode := &domain.Node{
 			ID:         input.ReqID,
 			Kind:       domain.NodeKindRequirement,
 			Properties: map[string]interface{}{"title": "Manually Linked Requirement"},

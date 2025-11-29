@@ -8,15 +8,15 @@ import (
 	"os"
 	"path/filepath"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/analysis"
 	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/config"
 	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/export"
 	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/graph"
 	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/mcp"
-	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/tui"
 	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/store"
+	"github.com/modelcontextprotocol/go-sdk/examples/server/hexanorm/internal/hexanorm/tui"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 // main is the entry point for the Hexanorm MCP server.

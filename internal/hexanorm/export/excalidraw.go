@@ -68,7 +68,7 @@ type ExcalidrawScene struct {
 // ExportExcalidraw generates an Excalidraw JSON file from the graph.
 func ExportExcalidraw(g *graph.Graph, outputPath string) error {
 	nodes := g.GetAllNodes()
-	
+
 	// Layout constants
 	const (
 		nodeWidth  = 200.0
@@ -88,7 +88,7 @@ func ExportExcalidraw(g *graph.Graph, outputPath string) error {
 	}
 
 	// Map to store generated elements by ID to update them later
-	rectMap := make(map[string]*ExcalidrawElement) 
+	rectMap := make(map[string]*ExcalidrawElement)
 	// We need to keep track of order to reconstruct the slice
 	rectOrder := []string{}
 
@@ -244,7 +244,7 @@ func ExportExcalidraw(g *graph.Graph, outputPath string) error {
 
 	// Construct final elements list
 	finalElements := []ExcalidrawElement{}
-	
+
 	// Add Rectangles and their Texts
 	for _, id := range rectOrder {
 		rect := rectMap[id]
