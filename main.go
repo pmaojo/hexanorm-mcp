@@ -10,13 +10,16 @@ import (
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// main is the entry point for the Hexanorm MCP server.
+// It parses command-line arguments to determine the root directory to analyze
+// and starts the MCP server over stdio.
 func main() {
 	rootDir := "."
 	if len(os.Args) > 1 {
 		rootDir = os.Args[1]
 	}
 
-	fmt.Printf("Starting Vibecoder Server in %s...\n", rootDir)
+	fmt.Printf("Starting Hexanorm Server in %s...\n", rootDir)
 
 	// Create server
 	server, err := mcp.NewServer(rootDir)

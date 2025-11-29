@@ -8,18 +8,22 @@ import (
 	"strings"
 )
 
+// GherkinFeature represents a parsed .feature file containing one or more scenarios.
 type GherkinFeature struct {
-	Name      string
-	Scenarios []GherkinScenario
+	Name      string            // The name of the feature.
+	Scenarios []GherkinScenario // List of scenarios defined in the feature.
 }
 
+// GherkinScenario represents a single scenario within a feature file.
 type GherkinScenario struct {
-	Name      string
-	Steps     []string
-	StepsHash string
-	Line      int
+	Name      string   // The name of the scenario.
+	Steps     []string // The raw text of the steps (Given/When/Then).
+	StepsHash string   // A hash of the steps used to detect changes or duplicates.
+	Line      int      // The line number where the scenario starts.
 }
 
+// ParseGherkin parses the content of a .feature file and returns a GherkinFeature struct.
+// It handles Feature and Scenario definitions and collects steps.
 func ParseGherkin(content []byte) (*GherkinFeature, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(content))
 	feature := &GherkinFeature{}

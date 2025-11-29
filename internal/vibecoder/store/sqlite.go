@@ -11,10 +11,14 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/domain"
 )
 
+// Store handles persistence of the semantic graph using SQLite.
 type Store struct {
 	db *sql.DB
 }
 
+// NewStore initializes a new Store in the specified storage directory.
+// It creates the directory if it doesn't exist and opens/creates 'vibecoder.db'.
+// It also initializes the database schema if needed.
 func NewStore(storageDir string) (*Store, error) {
 	if err := os.MkdirAll(storageDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create storage dir: %w", err)
@@ -35,10 +39,12 @@ func NewStore(storageDir string) (*Store, error) {
 	return s, nil
 }
 
+// Close closes the underlying database connection.
 func (s *Store) Close() error {
 	return s.db.Close()
 }
 
+// initSchema creates the necessary tables and indexes if they do not exist.
 func (s *Store) initSchema() error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS nodes (
@@ -65,6 +71,8 @@ func (s *Store) initSchema() error {
 	return nil
 }
 
+// SaveNode persists a node to the database.
+// It performs an UPSERT (insert or update on conflict) operation.
 func (s *Store) SaveNode(node *domain.Node) error {
 	props, _ := json.Marshal(node.Properties)
 	meta, _ := json.Marshal(node.Metadata)
@@ -80,6 +88,7 @@ func (s *Store) SaveNode(node *domain.Node) error {
 	return err
 }
 
+// DeleteNode removes a node and all its connected edges (cascading delete) from the database.
 func (s *Store) DeleteNode(id string) error {
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -98,6 +107,8 @@ func (s *Store) DeleteNode(id string) error {
 	return tx.Commit()
 }
 
+// SaveEdge persists an edge to the database.
+// It ignores the operation if the edge already exists.
 func (s *Store) SaveEdge(edge *domain.Edge) error {
 	_, err := s.db.Exec(`
 		INSERT OR IGNORE INTO edges (source_id, target_id, type)
@@ -106,6 +117,8 @@ func (s *Store) SaveEdge(edge *domain.Edge) error {
 	return err
 }
 
+// LoadAll retrieves all nodes and edges from the database.
+// It returns a slice of Nodes and a slice of Edges, or an error if the query fails.
 func (s *Store) LoadAll() ([]*domain.Node, []*domain.Edge, error) {
 	// Load Nodes
 	rows, err := s.db.Query("SELECT id, kind, properties, metadata FROM nodes")

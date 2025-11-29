@@ -12,6 +12,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/graph"
 )
 
+// Watcher monitors the filesystem for changes and triggers incremental analysis.
+// It uses fsnotify to detect file creation, modification, and deletion.
 type Watcher struct {
 	watcher  *fsnotify.Watcher
 	analyzer *analysis.Analyzer
@@ -19,6 +21,8 @@ type Watcher struct {
 	config   *config.Config
 }
 
+// NewWatcher initializes a new Watcher for the specified root directory.
+// It recursively adds all subdirectories to the watch list, excluding those ignored by config.
 func NewWatcher(rootDir string, analyzer *analysis.Analyzer, g *graph.Graph, cfg *config.Config) (*Watcher, error) {
 	fw, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -41,6 +45,8 @@ func NewWatcher(rootDir string, analyzer *analysis.Analyzer, g *graph.Graph, cfg
 	return w, nil
 }
 
+// Start begins the event loop for monitoring file changes.
+// It runs in a separate goroutine.
 func (w *Watcher) Start() {
 	go func() {
 		for {
@@ -60,6 +66,7 @@ func (w *Watcher) Start() {
 	}()
 }
 
+// Close stops the watcher and releases resources.
 func (w *Watcher) Close() error {
 	return w.watcher.Close()
 }

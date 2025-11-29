@@ -13,6 +13,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/parser"
 )
 
+// Analyzer performs static analysis on files to populate the semantic graph.
+// It handles import resolution, layer detection, and BDD step matching.
 type Analyzer struct {
 	Graph *graph.Graph
 	// Cache TSConfig for resolution
@@ -20,15 +22,18 @@ type Analyzer struct {
 	goMods    map[string]GoMod
 }
 
+// TSConfig represents a subset of tsconfig.json used for import resolution.
 type TSConfig struct {
 	BaseUrl string              `json:"baseUrl"`
 	Paths   map[string][]string `json:"paths"`
 }
 
+// GoMod represents basic module information from go.mod.
 type GoMod struct {
 	Module string
 }
 
+// NewAnalyzer creates a new Analyzer instance associated with the given graph.
 func NewAnalyzer(g *graph.Graph) *Analyzer {
 	return &Analyzer{
 		Graph:     g,
@@ -37,6 +42,8 @@ func NewAnalyzer(g *graph.Graph) *Analyzer {
 	}
 }
 
+// AnalyzeFile scans a single file and updates the graph with its node and relationships.
+// It handles configuration files (tsconfig.json, go.mod), Gherkin feature files, and source code.
 func (a *Analyzer) AnalyzeFile(path string, content []byte) error {
 	// Pre-scan for config files
 	if filepath.Base(path) == "tsconfig.json" {
@@ -122,6 +129,7 @@ func (a *Analyzer) AnalyzeFile(path string, content []byte) error {
 	return nil
 }
 
+// analyzeGherkin parses a Gherkin feature file and adds its scenarios to the graph.
 func (a *Analyzer) analyzeGherkin(path string, content []byte) error {
 	feat, err := parser.ParseGherkin(content)
 	if err != nil {
@@ -157,6 +165,8 @@ func (a *Analyzer) analyzeGherkin(path string, content []byte) error {
 	return nil
 }
 
+// detectLayer infers the architectural layer based on the file path.
+// It returns "domain", "application", "infrastructure", "interface", or empty string.
 func detectLayer(path string) string {
 	if strings.Contains(path, "/domain/") {
 		return "domain"
@@ -319,6 +329,9 @@ func (a *Analyzer) resolveGoImport(sourcePath, importStr string) string {
 	return importStr
 }
 
+// FindViolations scans the graph for architectural inconsistencies and BDD drift.
+// It checks if code in the 'domain' layer imports 'infrastructure' or 'application' layers.
+// It also verifies if Gherkin scenarios have matching step definitions.
 func (a *Analyzer) FindViolations() []domain.Violation {
 	var violations []domain.Violation
 
@@ -427,7 +440,8 @@ func (a *Analyzer) FindViolations() []domain.Violation {
 	return violations
 }
 
-// IndexStepDefinitions tries to link Scenarios to Steps
+// IndexStepDefinitions tries to link Scenarios to Steps by matching step text to regex patterns.
+// It creates EXECUTES edges in the graph for matches found.
 func (a *Analyzer) IndexStepDefinitions() {
 	scenarios := a.filterNodes(domain.NodeKindGherkinScenario)
 	stepDefs := a.filterNodes(domain.NodeKindStepDefinition)

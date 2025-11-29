@@ -13,8 +13,10 @@ import (
 	"github.com/smacker/go-tree-sitter/typescript/typescript"
 )
 
+// Language represents a supported programming language for parsing.
 type Language string
 
+// Constants for supported languages.
 const (
 	LangTypeScript Language = "typescript"
 	LangGo         Language = "go"
@@ -24,12 +26,14 @@ const (
 	LangUnknown    Language = "unknown"
 )
 
+// StepDefFound represents a discovered BDD step definition in the code.
 type StepDefFound struct {
-	Pattern      string
-	FunctionName string
-	Line         int
+	Pattern      string // The regex pattern or cucumber expression.
+	FunctionName string // The name of the function implementing the step.
+	Line         int    // The line number where the step definition starts.
 }
 
+// DetectLanguage identifies the programming language based on the file extension.
 func DetectLanguage(filename string) Language {
 	ext := filepath.Ext(filename)
 	switch ext {
@@ -64,6 +68,8 @@ func getLanguage(lang Language) *sitter.Language {
 	}
 }
 
+// ParseImports extracts import statements from the source code content.
+// It uses tree-sitter queries specific to the detected language.
 func ParseImports(content []byte, lang Language) ([]string, error) {
 	sl := getLanguage(lang)
 	if sl == nil {
@@ -132,6 +138,8 @@ func ParseImports(content []byte, lang Language) ([]string, error) {
 	return imports, nil
 }
 
+// ParseStepDefinitions extracts BDD step definitions from test files.
+// It looks for patterns like `Given("...")`, `Step("...")` depending on the language/framework.
 func ParseStepDefinitions(content []byte, lang Language) ([]StepDefFound, error) {
 	sl := getLanguage(lang)
 	if sl == nil {

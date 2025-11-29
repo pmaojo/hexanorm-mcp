@@ -17,15 +17,21 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// VibecoderServer implements the MCP server interface for the Hexanorm system.
+// It acts as the central hub, coordinating the Graph, Analyzer, and Watcher components,
+// and exposing them via MCP tools and resources.
 type VibecoderServer struct {
-	Graph    *graph.Graph
-	Analyzer *analysis.Analyzer
-	Store    *store.Store
-	Config   *config.Config
-	Watcher  *watcher.Watcher
-	RootDir  string
+	Graph    *graph.Graph       // The semantic graph.
+	Analyzer *analysis.Analyzer // The static analyzer.
+	Store    *store.Store       // The persistent store.
+	Config   *config.Config     // Server configuration.
+	Watcher  *watcher.Watcher   // File system watcher.
+	RootDir  string             // The root directory of the analyzed codebase.
 }
 
+// NewServer initializes and returns a new MCP server instance.
+// It loads configuration, initializes the database, builds the initial graph,
+// and starts the file watcher.
 func NewServer(rootDir string) (*mcp.Server, error) {
 	cfg, err := config.LoadConfig(rootDir)
 	if err != nil {
@@ -63,7 +69,7 @@ func NewServer(rootDir string) (*mcp.Server, error) {
 	}
 
 	s := mcp.NewServer(&mcp.Implementation{
-		Name:    "vibecoder",
+		Name:    "hexanorm-mcp", // Updated name
 		Version: "0.0.1",
 	}, &mcp.ServerOptions{})
 
@@ -134,20 +140,24 @@ func scanDirectory(root string, an *analysis.Analyzer) {
 
 // Tool Inputs
 
+// ScaffoldInput defines the input parameters for the scaffold_feature tool.
 type ScaffoldInput struct {
 	Name        string `json:"name" jsonschema:"description=The name of the feature,required"`
 	Description string `json:"description" jsonschema:"description=Description of the feature,required"`
 }
 
+// LinkRequirementInput defines the input parameters for the link_requirement tool.
 type LinkRequirementInput struct {
 	FilePath string `json:"file_path" jsonschema:"description=Path of the file to link,required"`
 	ReqID    string `json:"req_id" jsonschema:"description=Requirement ID,required"`
 }
 
+// BlastRadiusInput defines the input parameters for the blast_radius tool.
 type BlastRadiusInput struct {
 	CodeID string `json:"code_id" jsonschema:"description=ID of the code node,required"`
 }
 
+// EmptyInput defines an empty input structure for tools that require no parameters.
 type EmptyInput struct{}
 
 // Tool Handlers
@@ -257,7 +267,7 @@ func (vs *VibecoderServer) handleViolations(ctx context.Context, req *mcp.ReadRe
 func (vs *VibecoderServer) handleLiveDocs(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 	nodes := vs.Graph.GetAllNodes()
 	var sb strings.Builder
-	sb.WriteString("# Vibecoder Live Docs\n\n")
+	sb.WriteString("# Hexanorm Live Docs\n\n")
 	sb.WriteString("## Nodes\n")
 	for _, n := range nodes {
 		sb.WriteString(fmt.Sprintf("- **%s** (%s)\n", n.ID, n.Kind))

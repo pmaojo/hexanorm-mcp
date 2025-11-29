@@ -7,6 +7,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/examples/server/vibecoder/internal/vibecoder/store"
 )
 
+// Graph represents the in-memory semantic graph of the codebase.
+// It manages nodes and edges and synchronizes changes with the persistent store.
 type Graph struct {
 	mu           sync.RWMutex
 	nodes        map[string]*domain.Node
@@ -15,6 +17,8 @@ type Graph struct {
 	store        *store.Store
 }
 
+// NewGraph creates a new Graph instance.
+// If a store is provided, it loads the initial state from the store.
 func NewGraph(s *store.Store) *Graph {
 	g := &Graph{
 		nodes:        make(map[string]*domain.Node),
@@ -28,6 +32,7 @@ func NewGraph(s *store.Store) *Graph {
 	return g
 }
 
+// loadFromStore populates the in-memory graph from the persistent store.
 func (g *Graph) loadFromStore() error {
 	nodes, edges, err := g.store.LoadAll()
 	if err != nil {
@@ -42,6 +47,8 @@ func (g *Graph) loadFromStore() error {
 	return nil
 }
 
+// AddNode adds a node to the graph and persists it if a store is configured.
+// If the node already exists, it is updated.
 func (g *Graph) AddNode(node *domain.Node) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -51,6 +58,8 @@ func (g *Graph) AddNode(node *domain.Node) {
 	}
 }
 
+// RemoveNode removes a node and all connected edges from the graph.
+// It also removes the node from the persistent store.
 func (g *Graph) RemoveNode(id string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -84,6 +93,7 @@ func (g *Graph) RemoveNode(id string) {
 	}
 }
 
+// removeForwardEdge removes a specific edge from the forward edges map.
 func (g *Graph) removeForwardEdge(sourceID, targetID string) {
 	edges := g.edges[sourceID]
 	newEdges := edges[:0]
@@ -99,6 +109,7 @@ func (g *Graph) removeForwardEdge(sourceID, targetID string) {
 	}
 }
 
+// removeReverseEdge removes a specific edge from the reverse edges map.
 func (g *Graph) removeReverseEdge(targetID, sourceID string) {
 	edges := g.reverseEdges[targetID]
 	newEdges := edges[:0]
@@ -114,6 +125,8 @@ func (g *Graph) removeReverseEdge(targetID, sourceID string) {
 	}
 }
 
+// GetNode retrieves a node by its ID.
+// It returns the node and a boolean indicating if it was found.
 func (g *Graph) GetNode(id string) (*domain.Node, bool) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -121,6 +134,7 @@ func (g *Graph) GetNode(id string) (*domain.Node, bool) {
 	return n, ok
 }
 
+// GetAllNodes returns a slice of all nodes in the graph.
 func (g *Graph) GetAllNodes() []*domain.Node {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -131,6 +145,8 @@ func (g *Graph) GetAllNodes() []*domain.Node {
 	return nodes
 }
 
+// AddEdge adds a directed edge between two nodes.
+// It persists the edge if a store is configured.
 func (g *Graph) AddEdge(sourceID, targetID string, edgeType domain.EdgeType) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -148,6 +164,8 @@ func (g *Graph) AddEdge(sourceID, targetID string, edgeType domain.EdgeType) {
 	}
 }
 
+// addEdgeInternal adds an edge to the in-memory maps without persistence.
+// It returns true if the edge was added (did not already exist).
 func (g *Graph) addEdgeInternal(edge *domain.Edge) bool {
 	// Avoid duplicates
 	for _, e := range g.edges[edge.SourceID] {
@@ -161,6 +179,7 @@ func (g *Graph) addEdgeInternal(edge *domain.Edge) bool {
 	return true
 }
 
+// GetEdgesFrom returns all edges originating from the given source ID.
 func (g *Graph) GetEdgesFrom(sourceID string) []*domain.Edge {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -171,6 +190,7 @@ func (g *Graph) GetEdgesFrom(sourceID string) []*domain.Edge {
 	return result
 }
 
+// GetEdgesTo returns all edges pointing to the given target ID.
 func (g *Graph) GetEdgesTo(targetID string) []*domain.Edge {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -180,7 +200,9 @@ func (g *Graph) GetEdgesTo(targetID string) []*domain.Edge {
 	return result
 }
 
-// BlastRadius calculates impacted features and requirements given a code node ID.
+// BlastRadius calculates the potential impact of changing a specific code node.
+// It performs a reverse traversal to find all features and requirements that depend on the given code ID.
+// It returns a list of impacted feature IDs and a list of impacted requirement IDs.
 func (g *Graph) BlastRadius(codeID string) ([]string, []string) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -234,6 +256,8 @@ func (g *Graph) BlastRadius(codeID string) ([]string, []string) {
 	return features, requirements
 }
 
+// Clear removes all nodes and edges from the in-memory graph.
+// Warning: This does not affect the persistent store.
 func (g *Graph) Clear() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
